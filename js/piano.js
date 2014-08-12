@@ -71,7 +71,6 @@ define(function (require) {
   }
 
   Piano.prototype.noteUp = function (midi) {
-    console.log("note up", midi);
     if (midi in this.controllers) {
       this.controllers[midi].off();
       delete this.controllers[midi];
@@ -79,13 +78,12 @@ define(function (require) {
   }
 
   Piano.prototype.noteDown = function (midi) {
-    console.log("note down", midi);
     if (midi in this.controllers) {
       return;
     }
 
     var freq = midiToFreq(midi);
-    var controller = new SustainController(freq, 0.2, 0.5, 0.5, 0.2);
+    var controller = new SustainController(freq, 0.1, 0.4, 0.8, 0.2);
     var generator = controller.generator.bind(controller);
 
     synth = jsynth(this.context, generator);

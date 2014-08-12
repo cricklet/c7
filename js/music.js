@@ -2,9 +2,9 @@ define(function (require) {
   var Piano = require('piano');
   var _     = require('lib/underscore');
 
-  var GAIN_VAL = 0.2;
+  var GAIN_VAL = 0.4;
 
-  var KEYS = ['z', 's', 'x', 'd', 'c', 'v', 'g', 'b', 'h', 'n'];
+  var KEYS = ['q','2','w','3','e','r','5','t','6','y','7','u','i'];
   var MIDI_ROOT = 60;
 
   var Music = function () {
@@ -23,7 +23,7 @@ define(function (require) {
 
     var piano = new Piano(master, masterGain);
 
-    $(document).keypress(function (e) {
+    $(document).keydown(function (e) {
       var key = String.fromCharCode(e.keyCode).toLowerCase();
       if (key == 'm') {
         toggleMute();
