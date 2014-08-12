@@ -3,12 +3,15 @@ requirejs.config({
   shim: {
     'lib/jquery': {
       exports: '$'
-    }
-  , 'lib/timbre': {
+    },
+    'lib/timbre': {
       exports: 'T'
-    }
-  , 'lib/flocking': {
+    },
+    'lib/flocking': {
       exports: 'flock'
+    },
+    'lib/underscore': {
+      exports: '_'
     }
   }
 });

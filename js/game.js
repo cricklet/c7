@@ -11,13 +11,6 @@ define(function (require) {
     $game.css('background-color', 'red');
 
     var music = new Music();
-    music.play();
-
-    $(document).keypress(function (e) {
-      if (String.fromCharCode(e.keyCode) == 'm') {
-        music.toggleMute();
-      }
-    });
   }
 
   return Game;
