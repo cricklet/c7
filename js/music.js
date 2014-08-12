@@ -1,27 +1,34 @@
 define(function (require) {
-  var T = require('lib/timbre')
-    , _ = require('lib/underscore')
-    ;
+  var jsynth = require('lib/jsynth');
+  var _      = require('lib/underscore');
+
+  var GAIN_VAL = 0.2;
 
   var Music = function () {
-    this.synth = T("SynthDef").play();
-    this.synth.def = function(opts) {
-      var VCO = T("sin", {freq:opts.freq});
-      return VCO;
-    };
+    var master = new webkitAudioContext();
+    var masterGain = master.createGain();
+    masterGain.gain.value = GAIN_VAL;
+    masterGain.connect(master.destination);
+
+    this.master = master;
+    this.masterGain = masterGain;
   }
 
-  Music.prototype.mute = function () {
+  Music.prototype.toggleMute = function () {
+    if (this.masterGain.gain.value != 0) {
+      this.masterGain.gain.value = 0;
+    } else {
+      this.masterGain.gain.value = GAIN_VAL;
+    }
   }
 
   Music.prototype.play = function () {
-    return;
-    var s = this.synth;
-    s.noteOn(80);
+    var sineGenerator = function (time){
+      return Math.sin(time * 2 * Math.PI * 440)
+    }
 
-    setTimeout(function () {
-      s.noteOff(80);
-    }, 1000);
+    synth = jsynth(this.master, sineGenerator);
+    synth.connect(this.masterGain)
   }
 
   return Music;

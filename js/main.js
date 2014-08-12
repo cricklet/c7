@@ -6,7 +6,10 @@ requirejs.config({
     }
   , 'lib/timbre': {
       exports: 'T'
-    },
+    }
+  , 'lib/flocking': {
+      exports: 'flock'
+    }
   }
 });
 
