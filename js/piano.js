@@ -2,8 +2,6 @@ define(function (require) {
   var jsynth = require('lib/jsynth');
   var _      = require('lib/underscore');
 
-  var GAIN_VAL = 0.2;
-
   var adsrEnvelope = function (attack, decay, sustainLevel, release) {
     var stopTime = -1;
 
