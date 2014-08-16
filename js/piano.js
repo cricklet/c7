@@ -2,6 +2,10 @@ define(function (require) {
   var jsynth = require('lib/jsynth');
   var _      = require('lib/underscore');
 
+
+  /****************************************************************************
+   * Helpers for generating sounds.
+   */
   var adsrEnvelope = function (attack, decay, sustainLevel, release) {
     var stopTime = -1;
 
@@ -44,17 +48,20 @@ define(function (require) {
     };
   }
 
-  var SustainController = function (f,a,d,s,r) {
+  /****************************************************************************
+   * Plays a single note.
+   */
+  var Note = function (f,a,d,s,r) {
     this.sustained = true;
     this.adsr = adsrEnvelope(a,d,s,r);
     this.sine = sineGenerator(f);
   }
 
-  SustainController.prototype.off = function (t) {
+  Note.prototype.off = function (t) {
     this.sustained = false;
   }
 
-  SustainController.prototype.generator = function (t) {
+  Note.prototype.generator = function (t) {
     return this.adsr(t, this.sustained) * this.sine(t);
   }
 
@@ -62,32 +69,45 @@ define(function (require) {
     return Math.pow(2, (midi - 69.0) / 12.0) * 440;
   }
 
+  /****************************************************************************
+   * Plays multiple notes
+   */
   var Piano = function (context, output) {
     this.context = context;
     this.output = output;
-    this.controllers = {};
+    this.notes = {};
+  }
+
+  Piano.prototype.allNotesUp = function (except) {
+    var newNotes = {};
+    if (except in this.notes) {
+      newNotes[except] = this.notes[except];
+      delete this.notes[except];
+    }
+
+    for (var midi in this.notes) {
+      this.notes[midi].off();
+    }
+
+    this.notes = newNotes;
   }
 
   Piano.prototype.noteUp = function (midi) {
-    if (midi in this.controllers) {
-      this.controllers[midi].off();
-      delete this.controllers[midi];
+    if (midi in this.notes) {
+      this.notes[midi].off();
+      delete this.notes[midi];
     }
   }
 
   Piano.prototype.noteDown = function (midi) {
-    if (midi in this.controllers) {
-      return;
-    }
-
     var freq = midiToFreq(midi);
-    var controller = new SustainController(freq, 0.1, 0.4, 0.8, 0.2);
-    var generator = controller.generator.bind(controller);
+    var note = new Note(freq, 0.1, 0.4, 0.8, 0.2);
+    var generator = note.generator.bind(note);
 
     synth = jsynth(this.context, generator);
     synth.connect(this.output)
 
-    this.controllers[midi] = controller;
+    this.notes[midi] = note;
   }
 
   return Piano;

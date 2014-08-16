@@ -17,5 +17,5 @@ requirejs.config({
 });
 
 requirejs(['game'], function (Game) {
-  new Game().start();
+  var game = new Game();
 });
