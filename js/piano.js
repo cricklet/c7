@@ -100,6 +100,10 @@ define(function (require) {
   }
 
   Piano.prototype.noteDown = function (midi) {
+    if (midi in this.notes) {
+      return;
+    }
+
     var freq = midiToFreq(midi);
     var note = new Note(freq, 0.1, 0.4, 0.8, 0.2);
     var generator = note.generator.bind(note);
