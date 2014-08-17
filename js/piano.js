@@ -4,9 +4,10 @@ define(function (require) {
 
 
   /****************************************************************************
-   * Helpers for generating sounds.
-   */
-  var adsrEnvelope = function (attack, decay, sustainLevel, release) {
+  * Helpers for generating sounds.
+  * Generators return null when they are finished.
+  */
+  function adsrEnvelopeFactory (attack, decay, sustainLevel, release) {
     var stopTime = -1;
 
     var attackEnvelope = function (time) {
@@ -38,65 +39,102 @@ define(function (require) {
         if (time < release) return releaseEnvelope(time)
       }
 
-      return 0;
+      return null
     }
   }
 
-  var sineGenerator = function (freq) {
+  function sineGeneratorFactory (freq) {
     return function (time) {
       return Math.sin(time * 2 * Math.PI * freq)
     };
   }
 
   /****************************************************************************
-   * Plays a single note.
-   */
-  var Note = function (f,a,d,s,r) {
-    this.sustained = true;
-    this.adsr = adsrEnvelope(a,d,s,r);
-    this.sine = sineGenerator(f);
-  }
+  * Plays a single note.
+  */
+  function generatorFactory (f,a,d,s,r) {
+    adsrEnv = adsrEnvelopeFactory(a,d,s,r);
+    sineGen = sineGeneratorFactory(f);
+    return function (t, sustained) {
+      var sine = sineGen(t);
+      var adsr = adsrEnv(t);
 
-  Note.prototype.off = function (t) {
-    this.sustained = false;
-  }
-
-  Note.prototype.generator = function (t) {
-    return this.adsr(t, this.sustained) * this.sine(t);
-  }
-
-  var midiToFreq = function (midi) {
-    return Math.pow(2, (midi - 69.0) / 12.0) * 440;
+      if (adsr === null || sine === null) {
+        return null;
+      } else {
+        return adsr * sine;
+      }
+    }
   }
 
   /****************************************************************************
-   * Plays multiple notes
-   */
+  * Controller
+  */
+  function midiToFreq (midi) {
+    return Math.pow(2, (midi - 69.0) / 12.0) * 440;
+  }
+
+  function synthesizeNotes(t, notes) {
+    var overall = 0;
+    for (var midi in notes) {
+      var note = notes[midi];
+      if (!note.start) {
+        note.start = t;
+      }
+
+      var val  = note.generator(t - note.start, note.sustained);
+      if (val === null) {
+        note.remove = true;
+      } else {
+        overall += val;
+      }
+
+      return overall;
+    }
+
+    return overall;
+  }
+
+  function removeOldNotes (notes) {
+    var remove = [];
+
+    for (var midi in notes) {
+      var note = notes[midi];
+      if (note.remove) {
+        remove.push(midi);
+      }
+    }
+
+    for (var i in remove) {
+      delete notes[remove[i]];
+    }
+  }
+
   var Piano = function (context, output) {
-    this.context = context;
-    this.output = output;
-    this.notes = {};
+    var notes = {};
+
+    synth = jsynth(context, function (t) {
+      synthesizeNotes(t, notes)
+    });
+    synth.connect(output)
+
+    this.notes = notes;
   }
 
   Piano.prototype.allNotesUp = function (except) {
-    var newNotes = {};
-    if (except in this.notes) {
-      newNotes[except] = this.notes[except];
-      delete this.notes[except];
-    }
-
     for (var midi in this.notes) {
-      this.notes[midi].off();
+      this.notes[midi].sustained = false;
     }
 
-    this.notes = newNotes;
+    removeOldNotes(this.notes);
   }
 
   Piano.prototype.noteUp = function (midi) {
     if (midi in this.notes) {
-      this.notes[midi].off();
-      delete this.notes[midi];
+      this.notes[midi].sustained = false;
     }
+
+    removeOldNotes(this.notes);
   }
 
   Piano.prototype.noteDown = function (midi) {
@@ -104,14 +142,13 @@ define(function (require) {
       return;
     }
 
+    removeOldNotes(this.notes);
+
     var freq = midiToFreq(midi);
-    var note = new Note(freq, 0.1, 0.4, 0.8, 0.2);
-    var generator = note.generator.bind(note);
-
-    synth = jsynth(this.context, generator);
-    synth.connect(this.output)
-
-    this.notes[midi] = note;
+    this.notes[midi] = {
+      generator: generatorFactory(freq, 0.1, 0.4, 0.8, 0.2),
+      sustained: true
+    };
   }
 
   return Piano;
