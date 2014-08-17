@@ -52,12 +52,17 @@ define(function (require) {
   /****************************************************************************
   * Plays a single note.
   */
-  function generatorFactory (f,a,d,s,r) {
+  function midiToFreq (midi) {
+    return Math.pow(2, (midi - 69.0) / 12.0) * 440;
+  }
+
+  function generatorFactory (m,a,d,s,r) {
+    var f = midiToFreq(m);
     adsrEnv = adsrEnvelopeFactory(a,d,s,r);
     sineGen = sineGeneratorFactory(f);
     return function (t, sustained) {
       var sine = sineGen(t);
-      var adsr = adsrEnv(t);
+      var adsr = adsrEnv(t, sustained);
 
       if (adsr === null || sine === null) {
         return null;
@@ -70,85 +75,24 @@ define(function (require) {
   /****************************************************************************
   * Controller
   */
-  function midiToFreq (midi) {
-    return Math.pow(2, (midi - 69.0) / 12.0) * 440;
-  }
-
-  function synthesizeNotes(t, notes) {
-    var overall = 0;
-    for (var midi in notes) {
-      var note = notes[midi];
-      if (!note.start) {
-        note.start = t;
-      }
-
-      var val  = note.generator(t - note.start, note.sustained);
-      if (val === null) {
-        note.remove = true;
-      } else {
-        overall += val;
-      }
-
-      return overall;
-    }
-
-    return overall;
-  }
-
-  function removeOldNotes (notes) {
-    var remove = [];
-
-    for (var midi in notes) {
-      var note = notes[midi];
-      if (note.remove) {
-        remove.push(midi);
-      }
-    }
-
-    for (var i in remove) {
-      delete notes[remove[i]];
-    }
-  }
-
   var Piano = function (context, output) {
-    var notes = {};
+    var gen = generatorFactory(midiToFreq(40), 0.2, 0.4, 0.8, 0.2)
 
     synth = jsynth(context, function (t) {
-      synthesizeNotes(t, notes)
+      var val = gen(t, true);
+      return val;
     });
     synth.connect(output)
 
-    this.notes = notes;
   }
 
   Piano.prototype.allNotesUp = function (except) {
-    for (var midi in this.notes) {
-      this.notes[midi].sustained = false;
-    }
-
-    removeOldNotes(this.notes);
   }
 
   Piano.prototype.noteUp = function (midi) {
-    if (midi in this.notes) {
-      this.notes[midi].sustained = false;
-    }
-
-    removeOldNotes(this.notes);
   }
 
   Piano.prototype.noteDown = function (midi) {
-    if (midi in this.notes) {
-      return;
-    }
-
-    removeOldNotes(this.notes);
-
-    var freq = midiToFreq(midi);
-    this.notes[midi] = {
-      generator: generatorFactory(freq, 0.1, 0.4, 0.8, 0.2),
-      sustained: true
-    };
   }
 
   return Piano;
